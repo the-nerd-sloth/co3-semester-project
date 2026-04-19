@@ -1,0 +1,319 @@
+%==============================================================
+%  Chapter 1 :  Report body  (Introduction -- Conclusion)
+%  Target: four pages in the MastersDoctoralThesis layout.
+%==============================================================
+\chapter{Fair Water Distribution in Rural Nepal}
+\label{chap:report}
+
+%--------------------------------------------------------------
+\section{Introduction}
+%--------------------------------------------------------------
+Access to safe drinking water in rural Nepal remains persistently
+constrained by seasonal spring depletion, ageing gravity-fed
+infrastructure, and unequal access between households.
+Gautam and Dahal~\cite{gautam2020} document that roughly half of Nepal's
+community water schemes are non-functional or under-performing,
+with weak cost recovery, climate-driven source depletion, and
+institutional fragmentation as recurring obstacles. On the
+technical side, Laporte et al.~\cite{laporte2022} formulate the post-2015
+earthquake restoration of Nepalese gravity-fed networks as a
+hierarchical location-allocation and Steiner-forest problem,
+solved with a two-phase matheuristic. Both works frame
+\emph{infrastructure} and \emph{coverage}; the complementary
+operational question of \emph{how to allocate a limited communal
+supply once the network is in place} has received less formal
+attention.
+
+In this project we take a single village-scale view: given a
+fixed daily spring yield and a fixed set of households, how
+should the source be split day-by-day? We formulate this as a
+small-scale convex quadratic programme with equity weights and
+pipe-loss coupling, and we compare two methods from different
+classes of the CO3 taxonomy~\citep{ottCO3slides}: a gradient-based
+\emph{Lagrange--Newton} solver (Chapters~3--4 of the module) and
+the stochastic \emph{Simulated Annealing} metaheuristic
+(Chapter~7). The problem is self-formulated, parameterised from
+Nepal-specific sources~\citep{nepalDWSS,whoJMP}, and serves as a
+compact benchmark on which the two methods can be compared on
+accuracy, efficiency and robustness.
+
+%--------------------------------------------------------------
+\section{Problem Formulation}
+\label{sec:formulation}
+%--------------------------------------------------------------
+
+\paragraph{Variables and data.}
+Let $x_i$ denote the daily water volume delivered to household
+$i \in \{1,\dots,n\}$, $d_i$ its demand, $b_i$ the WHO-aligned
+minimum allocation, $a_i \geq 1$ a household-specific
+delivery-loss factor (so $a_i x_i$ is the source-side draw
+required to deliver $x_i$ at the tap), and $w_i > 0$ a
+vulnerability weight that raises the penalty for shortages at
+prioritised households. $S$ is the total daily spring yield.
+Values (Table~\ref{tab:params}) follow Nepal's Rural Water
+Supply Design Standards~\citep{nepalDWSS} and the WHO/JMP
+guidelines~\citep{whoJMP}.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Parameters of the base scenario.}
+\label{tab:params}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Parameter & Value / range & Source \\ \midrule
+Households $n$         & $20$                 & typical rural system size \\
+Demand $d_i$           & $225$ \si{L/day}     & SUS $45$ LPCD $\times\, 5$ persons~\citep{nepalDWSS} \\
+Minimum $b_i$          & $100$ \si{L/day}     & WHO $20$ LPCD $\times\, 5$ persons~\citep{whoJMP} \\
+Loss factor $a_i$      & $[1.00,\, 1.25]$     & pipe / terrain overhead \\
+Vulnerability $w_i$    & $[1.00,\, 1.80]$     & equity prioritisation \\
+Total supply $S$       & $3500$ \si{L/day}    & scarcity scenario~\citep{gautam2020} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Objective.}
+We minimise the weighted sum of squared deviations from demand,
+\begin{equation}
+  f(\mathbf{x}) \;=\; \sum_{i=1}^{n} w_i\bigl(d_i - x_i\bigr)^{2}.
+  \label{eq:obj}
+\end{equation}
+The quadratic form penalises large under-deliveries
+super-linearly, and the weights $w_i$ pull the allocation towards
+vulnerable households --- an equity mechanism absent from a
+uniformly weighted $L_1$ objective $\sum|d_i - x_i|$.
+Compared to a Rawlsian max--min criterion~\citep{rawls1971},
+the weighted $L_2$ form is smooth and strictly convex,
+enabling gradient-based solvers and a unique closed-form
+solution~\eqref{eq:waterfilling}; the Rawlsian alternative
+is left as a non-smooth extension for future work.
+
+\paragraph{Constraints.}
+Mass balance at the source (equality) and box bounds per
+household:
+\begin{align}
+  \sum_{i=1}^{n} a_i\,x_i \;&=\; S, \label{eq:supply}\\
+  b_i \;\leq\; x_i \;&\leq\; d_i, \quad i = 1,\dots,n.
+  \label{eq:box}
+\end{align}
+The upper bound $x_i \leq d_i$ prevents over-delivery, and
+together with $b_i > 0$ subsumes non-negativity. The problem is
+feasible iff $\sum_i a_i b_i \leq S \leq \sum_i a_i d_i$; for the
+base scenario this interval is $[2250,\, 5062.5]$~\si{L/day}, and
+$S = 3500$~\si{L/day} sits strictly inside.
+
+\paragraph{Characterisation.}
+\eqref{eq:obj} is smooth and strictly convex (Hessian
+$\nabla^{2} f = 2\,\mathrm{diag}(\mathbf{w}) \succ 0$); the
+feasible set defined by~\eqref{eq:supply}--\eqref{eq:box} is a
+non-empty, compact, convex polytope. The problem therefore admits
+a unique global minimum fully characterised by the
+Karush--Kuhn--Tucker (KKT) conditions~\citep[Ch.~12]{nocedal2006}.
+This property allows us to treat the Lagrange--Newton output as a
+ground-truth reference for validating SA.
+
+%--------------------------------------------------------------
+\section{Methods}
+\label{sec:methods}
+%--------------------------------------------------------------
+
+\subsection{Lagrange--Newton (trust-constr)}
+With a multiplier $\lambda \in \mathbb{R}$ for~\eqref{eq:supply}
+and $\boldsymbol{\mu}, \boldsymbol{\nu} \in \mathbb{R}_{\geq
+0}^{n}$ for the lower and upper box bounds, the Lagrangian is
+\begin{equation}
+\begin{aligned}
+  \mathcal{L}(\mathbf{x},\lambda,\boldsymbol{\mu},\boldsymbol{\nu})
+  \;=\;& f(\mathbf{x})
+  - \lambda\!\left(\textstyle\sum_i a_i x_i - S\right) \\
+  &- \textstyle\sum_i \mu_i (x_i - b_i)
+    - \textstyle\sum_i \nu_i (d_i - x_i).
+\end{aligned}
+\label{eq:lagrangian}
+\end{equation}
+Stationarity gives $2 w_i (x_i^{*} - d_i) = \lambda a_i - \mu_i +
+\nu_i$. For an \emph{interior} household (both box bounds slack,
+$\mu_i = \nu_i = 0$) this yields the closed-form water-filling
+solution
+\begin{equation}
+  x_i^{*} \;=\; d_i - \frac{\lambda\, a_i}{2 w_i},
+  \label{eq:waterfilling}
+\end{equation}
+which makes the role of the parameters explicit: households with
+a higher loss factor $a_i$ are cut back more (they are expensive
+to serve), whereas a higher vulnerability weight $w_i$ pulls
+$x_i$ back toward its demand. The multiplier $\lambda$ is fixed
+by~\eqref{eq:supply}. We pass $f$ and its analytical gradient
+$\nabla f(\mathbf{x}) = 2\,\mathbf{w}\odot(\mathbf{x} -
+\mathbf{d})$ to \texttt{scipy.optimize.minimize} with
+\texttt{method=\mbox{"trust-constr"}}~\citep{scipy2020}, using
+\texttt{LinearConstraint} for~\eqref{eq:supply} and
+\texttt{Bounds} for~\eqref{eq:box}. The algorithm is an
+interior-point trust-region Newton method that converges
+quadratically near $\mathbf{x}^{*}$. The complete driver is given
+in Appendix~\ref{app:code}.
+
+\subsection{Simulated Annealing}
+SA~\citep{kirkpatrick1983,metropolis1953} treats $\mathbf{x}$ as
+a state of a physical system with ``energy'' $f(\mathbf{x})$ and
+asymptotically samples from $p(\mathbf{x}) \propto
+\exp(-f(\mathbf{x})/T)$ while the temperature $T$ is reduced.
+Two design choices are critical for this constrained instance.
+
+\emph{Constraint-preserving transfer move.}
+A naive additive perturbation followed by \texttt{np.clip} would
+silently break the source balance~\eqref{eq:supply}. We therefore
+use a \emph{pairwise transfer}: pick two households $i \neq j$
+uniformly at random; the delivery-factor coupling forces
+\begin{equation}
+  a_i \Delta x_i = a_j \Delta x_j
+  \;\Longrightarrow\;
+  \Delta x_j = \tfrac{a_i}{a_j}\,\Delta x_i ,
+\label{eq:coupled}
+\end{equation}
+so that $\sum_k a_k x_k$ is preserved exactly. The feasible
+window for $\Delta x_i > 0$ is
+\begin{equation}
+  \Delta_{\max} \;=\; \min\!\Bigl(
+    x_i - b_i,\;\;
+    \tfrac{a_j}{a_i}(d_j - x_j),\;\;
+    \text{step}
+  \Bigr).
+\label{eq:deltamax}
+\end{equation}
+We sample $\Delta x_i \sim \mathcal{U}(0, \Delta_{\max})$ and
+update $(x_i, x_j) \leftarrow (x_i - \Delta x_i,\; x_j +
+(a_i/a_j)\Delta x_i)$. By construction every visited state is
+strictly feasible; no projection or rejection step is needed.
+
+\emph{Cooling schedule.}
+We adopt the linear schedule of the CO3
+slides~\citep{ottCO3slides},
+\begin{equation}
+  T_k = T_0 \Bigl(1 - \tfrac{k}{k_{\max}}\Bigr),
+  \qquad k = 0,\dots,k_{\max}-1,
+  \label{eq:cooling}
+\end{equation}
+with $k_{\max} = 50{,}000$ and $T_0 = 500$, giving an initial uphill-acceptance
+probability of $\approx 0.8$ for a typical first step. Proposals with
+$\Delta f \leq 0$ are accepted deterministically; otherwise with
+probability $\exp(-\Delta f / T_k)$. We initialise $\mathbf{x}^{(0)}$ by setting each household
+to $b_i$ and distributing the residual source water
+$S - \sum_i a_i b_i$ proportionally to the headroom
+$a_i(d_i - b_i)$, which yields a strictly feasible
+$\sum_i a_i x_i^{(0)} = S$ by construction.
+
+%--------------------------------------------------------------
+\section{Results}
+\label{sec:results}
+%--------------------------------------------------------------
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.65\linewidth]{Figures/allocation_and_convergence.pdf}
+\caption{\textbf{Top:} Optimal daily allocation $x_i^{*}$ per
+household for both methods; the dashed line marks the WHO
+minimum $b = 100$~L/day, the dotted line the uniform demand
+$d_i = 225$~L/day. \textbf{Bottom:} Convergence of the SA
+objective compared to the Lagrange--Newton reference $f^{*}$
+(log scale). Gap closes to $\approx 30\,\text{L}^2/\text{day}^2$ after $\sim\!15{,}000$ iterations.}
+\label{fig:main}
+\end{figure}
+
+Both methods converge to essentially the same allocation
+(Fig.~\ref{fig:main}, top). Because $S < \sum_i a_i d_i$ but
+$S > \sum_i a_i b_i$, neither box bound is active in the base
+scenario: every household sits strictly inside its box and
+receives the interior water-filling
+solution~\eqref{eq:waterfilling}, $x_i^{*} = d_i - \lambda^{*}
+a_i / (2 w_i)$ with $\lambda^{*}\approx -170.81$ fixed
+by~\eqref{eq:supply}. Higher-$a_i$ households are cut back more;
+higher-$w_i$ households stay closer to their demand. Total
+delivered water at the tap is $\sum_i x_i^{*} \approx
+3{,}101$~\si{L/day}, which is less than $S = 3{,}500$: the
+difference ($\approx 400$~\si{L/day}) is absorbed by pipe losses.
+Key numbers are summarised in Table~\ref{tab:results}.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Method comparison on the base scenario ($S=3500$).}
+\label{tab:results}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Metric & Lagrange--Newton & Simulated Annealing \\ \midrule
+$f^{*}$ \quad(\si{L^2 / day^2})   & $133{,}446$      & $133{,}475$ \\
+$\|\mathbf{x}^{*}_{\text{SA}} - \mathbf{x}^{*}_{\text{LN}}\|_{\infty}$ (\si{L/day}) & -- & $3.15$ \\
+Iterations                        & $35$             & $50{,}000$ \\
+Runtime (\si{\milli\second})      & $\sim 58$        & $\sim 835$ \\
+Max.\ unmet demand (\si{L/day})   & $85.4$           & $87.5$ \\
+Shadow price $|\lambda^*|$ (\si{L^2 \cdot day^{-3}}) & $170.81$ & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Lagrange multiplier $\lambda^* \approx -170.81$~\si{L^2\!\cdot day^{-3}}
+is the shadow price of the supply constraint~\eqref{eq:supply}: one additional
+litre per day of spring water reduces the total shortfall cost $f$ by
+$|\lambda^*| = 170.81$~\si{L^2\!\cdot day^{-3}}, providing a direct
+operational signal for infrastructure investment decisions.
+
+The near-identical solutions are \emph{expected}, not a bug:
+strict convexity guarantees a unique global minimum, so any
+convergent method must reach it. This cross-validation is the
+most informative outcome of the comparison.
+
+\emph{Efficiency.}
+Lagrange--Newton reaches the KKT point in $35$~iterations
+and ${\sim}58$~\si{\milli\second}, orders of magnitude faster
+than SA, whose budget of $50{,}000$ iterations is required for
+the linear schedule to cool adequately.
+
+\emph{Robustness.}
+Varying the initial feasible guess $\mathbf{x}^{(0)}$ changes
+SA's final $f$ by less than $0.04\,\%$ (max.\ gap $48$~L$^2$/day$^2$,
+Table~\ref{tab:robustness}); Lagrange--Newton is
+insensitive to $\mathbf{x}^{(0)}$ by convexity. Across supply
+scenarios $S \in \{2500, 3500, 4500\}$~L/day both methods track
+the analytic water-filling allocation smoothly
+(Fig.~\ref{fig:scenarios}); at $S=2500$~\si{L/day} the lower box bound
+is active for six households. The critical supply at which
+the first bound activates is $S^* \approx 2784$~\si{L/day}, where
+household~1 (lowest $a_i/w_i$ ratio) reaches $x_1^* = b_1$.
+
+%--------------------------------------------------------------
+\section{Discussion and Conclusion}
+\label{sec:discussion}
+%--------------------------------------------------------------
+
+The fact that SA recovers the Lagrange--Newton optimum at
+orders of magnitude higher computational cost illustrates a
+textbook trade-off: on a smooth, strictly convex problem the
+gradient-based method is strictly preferable~\citep{nocedal2006}.
+SA's value in this project lies elsewhere --- it stress-tests
+both the Lagrangian derivation (is the KKT solution we see
+really the optimum?) and the feasibility-preserving move
+operator~\eqref{eq:coupled}--\eqref{eq:deltamax}. Two natural
+extensions push the model into regimes where SA becomes
+competitive with, or superior to, Lagrange--Newton: \emph{discrete}
+tap-placement decisions in the spirit of Laporte et al.~\cite{laporte2022}
+turn the problem into a mixed-integer programme, and non-convex
+pipe-loss models such as $\eta_i(x_i) = \alpha_i x_i / (1 +
+\beta_i x_i)$ introduce local minima. In both cases KKT no
+longer guarantees global optimality, and a metaheuristic
+baseline provides a safety net that a local gradient method
+cannot.
+
+\emph{Limitations and conclusion.}
+The model is static and deterministic: it ignores diurnal demand
+peaks, storage dynamics, and stochastic spring yield, and the
+weighted squared-deviation metric is one reasonable choice among
+several (a max--min/Rawlsian alternative is left for future
+work). With those caveats stated, we formulated household-level
+fair water distribution in rural Nepal as a convex quadratic
+programme with delivery-loss coupling and equity weights, solved
+it with two methodologically distinct algorithms, and observed
+the agreement that strict convexity predicts. Lagrange--Newton
+is the production method; SA is the easily-extensible building
+block for the non-convex extensions any real operational tool
+would eventually require.

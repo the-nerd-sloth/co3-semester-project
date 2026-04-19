@@ -1,0 +1,177 @@
+%==============================================================
+% CO3 Project Report  --  MSLS 2026
+% Fair Water Distribution in Rural Nepal:
+% Lagrange-Newton vs. Simulated Annealing
+%
+% Single-column, T1-style ZHAW title page,
+% max. 4 pages of body content (intro - conclusion),
+% code listing + references in the appendix.
+%==============================================================
+\documentclass[
+    11pt,
+    english,
+    singlespacing,
+    parskip,
+    headsepline,
+    consistentlayout,
+    oneside,
+]{MastersDoctoralThesis}
+
+\usepackage{float}
+\usepackage{caption}
+\captionsetup{
+  justification=justified,
+  singlelinecheck=false,
+  format=hang,
+  font=small,
+  labelfont=bf
+}
+
+\input{preamble}
+
+% --- citations: IEEE numeric style ---------------------------------
+\usepackage[numbers,sort&compress]{natbib}
+
+% --- code listings -----------------------------------------------------------
+\usepackage{listings}
+\usepackage{xcolor}
+\definecolor{codegray}{rgb}{0.95,0.95,0.95}
+\definecolor{codekeyword}{rgb}{0.00,0.35,0.70}
+\definecolor{codestring}{rgb}{0.55,0.20,0.20}
+\definecolor{codecomment}{rgb}{0.35,0.55,0.35}
+\lstdefinestyle{pythonstyle}{
+    language=Python,
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{codekeyword}\bfseries,
+    stringstyle=\color{codestring},
+    commentstyle=\color{codecomment}\itshape,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=8pt,
+    breaklines=true,
+    breakatwhitespace=true,
+    showstringspaces=false,
+    frame=single,
+    framerule=0.3pt,
+    rulecolor=\color{gray!40},
+    xleftmargin=12pt,
+    xrightmargin=4pt,
+    tabsize=4,
+    captionpos=b,
+}
+\lstset{style=pythonstyle}
+
+% --- project metadata --------------------------------------------------------
+\thesistitle{Fair Water Distribution in Rural Nepal: A~Comparison of Lagrange--Newton and Simulated Annealing}
+\author{Triantafyllia Giora, Spyridon Margomenos, Nicolas Biner, Robin Giacomelli}
+\university{Zurich University of Applied Sciences}
+\department{School of Life Sciences and Facility Management}
+\subject{Applied Computational Life Sciences}
+
+\AtBeginDocument{
+  \hypersetup{pdftitle={CO3 Project -- Fair Water Distribution in Rural Nepal}}
+  \hypersetup{pdfauthor={Giora, Margomenos, Biner, Giacomelli}}
+}
+
+\newcommand{\TODO}[1]{\textcolor{red}{[TODO: #1]}}
+
+\begin{document}
+
+\pagestyle{plain}
+
+%==============================================================
+% TITLE PAGE  (T1-style ZHAW layout, adapted from Front/titlepage.tex)
+%==============================================================
+\newgeometry{margin=1in}
+\begin{titlepage}
+\setlength{\parskip}{0pt}
+
+\begin{center}
+\includegraphics[width=0.15\textwidth]{Figures/zhaw_rgb}
+
+\ifxetex
+    \vspace{0.5cm}
+    {\zhawtitlefont\color{zhawblue}\LARGE \univname\par}
+    \vspace{0.2cm}
+\else
+    \vspace{0.75cm}
+    {\includegraphics[height=17.9pt]{Figures/zhaw_font_eng_font}\par}
+    \vspace{0.05cm}
+\fi
+{\Large Department \deptname\par}
+\vspace{0.15cm}
+{\Large Institute of Computational Life Sciences\par}
+\vspace{2.5cm}
+\textsc{\Large CO3 Project Report -- Spring Semester 2026}
+\vspace{0.2cm}
+\HRule\\[0.4cm]
+{\Large\bfseries Fair Water Distribution in Rural Nepal:\\[2pt]
+A Comparison of Lagrange--Newton and Simulated Annealing\par}
+\vspace{0.4cm}
+\HRule\\[1.2cm]
+
+\begin{center}
+    \large
+    \emph{Authors:}\\[0.2cm]
+    Triantafyllia Giora \\
+    Spyridon Margomenos \\
+    Nicolas Biner \\
+    Robin Giacomelli \\[0.5cm]
+    \emph{Lecturer:} \\
+    Prof.~Dr.~Thomas Ott \\[0.3cm]
+    \emph{Module:} \\
+    CO3 -- Optimisation and \\
+    Bio-Inspired Algorithms
+\end{center}
+
+\vfill
+
+{\large
+Submitted on \today\\[0.3cm]
+Study program: MSc Applied Computational Life Sciences\\
+}
+
+\end{center}
+\end{titlepage}
+\restoregeometry
+
+%==============================================================
+% MAIN MATTER  --  the 4-page report body
+%==============================================================
+\pagestyle{thesis}
+\setcounter{page}{1}
+
+% tighten the body layout: smaller margins & compact chapter heading
+\newgeometry{left=2.2cm,right=2.2cm,top=2.2cm,bottom=2.5cm}
+% override the class's generous chapter spacing
+\renewcommand{\abovechapterskip}{\vspace*{-6pt}}
+\renewcommand{\chapterbelowskip}{\vspace*{8pt}}
+\renewcommand{\chapterinbetweenskip}{\vspace*{2pt}}
+\renewcommand{\chapterfont}{\Large\bfseries}
+\renewcommand{\chapterprefixfont}{\normalsize\bfseries}
+% reduce paragraph-skip which is generous in the class
+\setlength{\parskip}{2pt plus 1pt minus 1pt}
+
+\include{Chapters/Chapter1}
+
+%==============================================================
+% REFERENCES  (still part of main report)
+%==============================================================
+\bibliographystyle{unsrtnat}
+\bibliography{references}
+
+%==============================================================
+% APPENDIX  -- separate numbering A-1, A-2, ...
+%==============================================================
+\restoregeometry
+\appendix
+\clearpage
+\pagestyle{plain}
+\pagenumbering{arabic}
+\renewcommand{\thepage}{A-\arabic{page}}
+\setcounter{page}{1}
+\include{Appendices/AppendixA}
+
+\end{document}
