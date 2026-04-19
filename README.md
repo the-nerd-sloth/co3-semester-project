@@ -28,33 +28,34 @@ This is the semester project for the course of *CO3: Optimisation and Bio-Inspir
 
 This repository contains the semester project for the ZHAW course of CO3: Optimisation and Bio-Inspired Algorithms.
 
-It tackles the pproblems of....
+It tackles the problem of safe drinking water distribution in rural Nepal; how to allocate a limited communal supply once the infrastructure is in place. 
 
 [Back to top](#readme-top)
 
 ## Goals
 
-- ???
+- Formulate the problem and apply two different methods from the course's theory:
+	- Lagrange–Newton
+	- Simulated Annealing
+- Compare the two methods.
 
 [Back to top](#readme-top)
 
 ## Project Structure
 
-Planned structure (no structure discussed for now):
 
 ```text
 Optimisation and Bio-Inspired Algorithms/
 	README.md
 	LICENSE
 	Code/
-		scripts...
+		python scripts
 	Presentation/
-		pdf...
+		presetation files
 	Problem/
-		pdf...
-	Report
-		pdf...
-		graph/
+		problem definition related PDFs
+	Report/
+		Latex files, final PDFs and images
 ```
 
 [Back to top](#readme-top)
@@ -64,22 +65,23 @@ Optimisation and Bio-Inspired Algorithms/
 ### Prerequisites
 
 - Git
-- A code editor
-- Python 3.10+.....
+- Python 3.10+
+- Jupyter Notebook
 
 ### Installation
 
 ```sh
 git clone https://github.com/the-nerd-sloth/co3-semester-project.git
-cd co3-semester-project
-.......
+cd co3-semester-project/Code
 ```
 
 [Back to top](#readme-top)
 
 ## Usage
 
-Instructions....
+- Follow the Installation instructions.
+- Open the `project_script_lagrange.ipynb` in Jupyter.
+- Run it.
 
 [Back to top](#readme-top)
 
@@ -89,6 +91,10 @@ Instructions....
 	- GitHub: [@triantafylliagiora](https://github.com/triantafylliagiora)
 - **Spyridon Margomenos**
 	- Github: [@the-nerd-sloth](https://github.com/the-nerd-sloth)
+- **Robin Giacomelli**
+	- Github: [@xgunnarx](https://github.com/xgunnarx)
+- **Nicolas Biner**
+	- Github: [@tNico407](https://github.com/Nico407)
 
 [Back to top](#readme-top)
 
